@@ -1,28 +1,15 @@
-name: Python Build and Test
+name: Test Python Action
 
 on:
   push:
-  pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          echo "Checking for requirements.txt..."
-          if [ -f requirements.txt ]; then
-            echo "Found requirements.txt, installing dependencies"
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found, skipping installation"
-          fi
+      - name: Run Python action
+        uses: ./.github/actions/action
