@@ -1,4 +1,4 @@
-name: Test Python Action
+name: Test Python Actions
 
 on:
   push:
