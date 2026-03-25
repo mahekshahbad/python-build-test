@@ -1,1 +1,2 @@
-print("Python CI")
+def add(a, b):
+    return a + b
