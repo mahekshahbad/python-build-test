@@ -1,0 +1,40 @@
+name: "python build and test action"
+description: "Sets up Python, installs dependencies, and runs pytest with coverage"
+
+inputs:
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.11"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Upgrade pip
+      shell: bash
+      run: python -m pip install --upgrade pip
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        if [ -f requirements.txt ]; then
+          echo "Installing dependencies..."
+          pip install -r requirements.txt
+        else
+          echo "No requirements.txt found"
+        fi
+
+    - name: Ensure pytest
+      shell: bash
+      run: |
+        python -c "import pytest" 2>/dev/null || pip install pytest pytest-cov
+
+    - name: Run tests
+      shell: bash
+      run: |
+        pytest --junitxml=report.xml --cov=. --cov-report=xml
