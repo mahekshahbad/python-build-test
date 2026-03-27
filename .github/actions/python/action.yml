@@ -30,9 +30,10 @@ runs:
           --junitxml=test-results/results.xml \
           -v
 
-    - name: Upload test results
-      if: always()
+    - name: Upload test & coverage reports
       uses: actions/upload-artifact@v4
       with:
-        name: test-results-py
-        path: test-results/results.xml
+        name: python-reports
+        path: |
+          test-results/results.xml
+          coverage.xml
