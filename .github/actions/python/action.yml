@@ -37,3 +37,83 @@ runs:
         path: |
           test-results/results.xml
           coverage.xml
+
+=========
+
+name: "Python Build"
+description: "Install dependencies for Python project"
+
+inputs:
+  python-version:
+    description: "Python version"
+    required: false
+    default: "3.9"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Show Python version
+      shell: bash
+      run: python --version
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+
+
+================
+
+name: "Python Test"
+description: "Run pytest with coverage and JUnit XML"
+
+inputs:
+  python-version:
+    description: "Python version"
+    required: false
+    default: "3.9"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install pytest
+      shell: bash
+      run: |
+        pip install pytest pytest-cov==4.1.0
+
+    - name: Run tests with pytest (JUnit XML + Coverage)
+      shell: bash
+      run: |
+        mkdir -p test-results
+        PYTHONPATH=. pytest test/ \
+          --ignore test/test_endpoint.py \
+          --junitxml=test-results/results.xml \
+          --cov=. \
+          --cov-report=term \
+          --cov-report=xml \
+          -v
+
+    - name: Upload test & coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-reports
+        path: |
+          test-results/results.xml
+          coverage.xml
+
+
+
+=================
+
+
+- name: Python Build
+  uses: medica-dev-platform/github-common-actions/python-build@<branch-name>
+  with:
+    python-version: "3.9"
+
+- name: Python Test
+  uses: medica-dev-platform/github-common-actions/python-test@<branch-name>
+  with:
+    python-version: "3.9"
