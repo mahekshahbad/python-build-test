@@ -33,6 +33,15 @@ jobs:
 
           echo "Scan completed"
 
+        - name: Extract Secret Details
+          run: |
+            echo "==== Detected Secrets ===="
+            if [ -f scan-output.json ]; then
+              grep -E '"DetectorName"|"Raw"|"file"' scan-output.json || echo "No secrets found"
+            else
+              echo "No scan output file"
+            fi
+
       # 4. Ensure file always exists (important)
       - name: Ensure Result File Exists
         run: |
