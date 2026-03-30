@@ -25,3 +25,42 @@
         repo: context.repo.repo,
         body: message
       });
+
+
+
+
+- name: Debug - List Files
+  run: |
+    echo "Listing files in workspace"
+    ls -la
+
+
+
+- name: Comment Scan Results
+  if: github.event_name == 'pull_request'
+  uses: actions/github-script@v7
+  with:
+    script: |
+      const fs = require('fs');
+      const path = 'scan-output.json';
+
+      let message = "### 🔐 TruffleHog Secret Scan Result\n\n";
+
+      if (fs.existsSync(path)) {
+        const content = fs.readFileSync(path, 'utf8');
+
+        if (content.includes("DetectorName")) {
+          message += "⚠️ Potential secrets detected. Please review logs.\n";
+        } else {
+          message += "✅ No secrets detected.\n";
+        }
+      } else {
+        message += "⚠️ Scan result file not found.\n";
+      }
+
+      github.rest.issues.createComment({
+        issue_number: context.issue.number,
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        body: message
+      });
