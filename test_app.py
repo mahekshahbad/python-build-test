@@ -30,3 +30,21 @@ AWS_KEY=AKIAIOSFODNN7EXAMPLE
 AWS_SECRET=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 GITHUB_TOKEN=ghp_REDACTED_TEST_TOKEN_1234567890ab
 SLACK_WEBHOOK=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+
+
+
+if [ "$SECRET_COUNT" -gt 0 ]; then
+  echo "❌ Secrets found!"
+  echo "---- Detected Secrets ----"
+
+  jq -r '
+    select(.DetectorName != null) |
+    "Detector: \(.DetectorName) | File: \(.SourceMetadata.Data.Filesystem.file // "unknown") | Line: \(.SourceMetadata.Data.Filesystem.line // "N/A")"
+  ' trufflehog-results.json || true
+
+  echo "--------------------------"
+
+  if [ "${{ inputs.fail-on-secrets }}" = "true" ]; then
+    exit 1
+  fi
+fi
