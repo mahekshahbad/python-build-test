@@ -194,3 +194,19 @@ jobs:
             echo "Failing due to detected secrets"
             exit 1
           fi
+
+
+
+name: TruffleHog Scan Trigger
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  call-trufflehog:
+    uses: ./.github/workflows/trufflehog.yml
+    with:
+      working-directory: "."
+      fail-on-secrets: true
+      upload-artifact: true
