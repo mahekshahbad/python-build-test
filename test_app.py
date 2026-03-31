@@ -37,6 +37,12 @@ inputs:
     default: ""
 
 
+trufflehog-ignore-patterns: |
+        *.md
+        docs/
+        *.txt
+
+
 
 
 name: Trigger TruffleHog Scan
