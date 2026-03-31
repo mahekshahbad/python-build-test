@@ -4,6 +4,107 @@ on:
   workflow_call:
     inputs:
       working-directory:
+        description: "Directory to scan"
+        required: false
+        type: string
+        default: "."
+
+      exclude-patterns:
+        description: "Additional exclude patterns (newline separated)"
+        required: false
+        type: string
+        default: ""
+
+      fail-on-secrets:
+        description: "Fail workflow if secrets found"
+        required: false
+        type: boolean
+        default: true
+
+    outputs:
+      secret-count:
+        description: "Number of detected secrets"
+        value: ${{ jobs.scan.outputs.secret_count }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    outputs:
+      secret_count: ${{ steps.count.outputs.secret_count }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install TruffleHog
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh
+
+      - name: Prepare ignore file
+        id: ignore
+        run: |
+          IGNORE_FILE="${RUNNER_TEMP}/trufflehog-ignore.txt"
+
+          printf "%s\n" \
+            ".git/" \
+            "node_modules/" \
+            ".terraform/" \
+            "*.lock" \
+            "test-results/" \
+            "security-reports/" \
+            > "$IGNORE_FILE"
+
+          if [ -n "${{ inputs.exclude-patterns }}" ]; then
+            echo "${{ inputs.exclude-patterns }}" >> "$IGNORE_FILE"
+          fi
+
+          echo "ignore_file=$IGNORE_FILE" >> $GITHUB_OUTPUT
+
+      - name: Run TruffleHog Scan
+        id: scan
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          trufflehog filesystem . \
+            --json \
+            --no-update \
+            --exclude-paths="${{ steps.ignore.outputs.ignore_file }}" \
+            > trufflehog-results.json 2>/dev/null || true
+
+      - name: Count Secrets
+        id: count
+        run: |
+          if [ -s trufflehog-results.json ]; then
+            COUNT=$(grep -c '"DetectorName"' trufflehog-results.json || echo 0)
+          else
+            COUNT=0
+          fi
+
+          echo "Secrets found: $COUNT"
+          echo "secret_count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trufflehog-results
+          path: trufflehog-results.json
+
+      - name: Fail if secrets found
+        if: ${{ inputs.fail-on-secrets && steps.count.outputs.secret_count != '0' }}
+        run: |
+          echo "❌ Secrets detected!"
+          exit 1
+
+
+================================
+
+
+name: TruffleHog Secret Scan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
         required: false
         type: string
         default: "."
