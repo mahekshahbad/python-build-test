@@ -126,29 +126,31 @@ jobs:
                     "informationUri": "https://github.com/trufflesecurity/trufflehog"
                   }
                 },
-                "results": map({
-                  "ruleId": (.DetectorName // "unknown"),
-                  "message": {
-                    "text": ("Potential secret detected: " + (.DetectorName // "unknown"))
-                  },
-                  "level": "error",
-                  "locations": [
-                    {
-                      "physicalLocation": {
-                        "artifactLocation": {
-                          "uri": (.SourceMetadata.Data.Filesystem.file // "unknown")
-                        },
-                        "region": {
-                          "startLine": (.SourceMetadata.Data.Filesystem.line // 1)
+                "results": (
+                  map(select(.DetectorName != null)) | map({
+                    "ruleId": .DetectorName,
+                    "message": {
+                      "text": ("Potential secret detected: " + .DetectorName)
+                    },
+                    "level": "error",
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": (.SourceMetadata.Data.Filesystem.file // "unknown")
+                          },
+                          "region": {
+                            "startLine": (.SourceMetadata.Data.Filesystem.line // 1)
+                          }
                         }
                       }
-                    }
-                  ]
-                })
+                    ]
+                  })
+                )
               }
             ]
           }
-          ' trufflehog-results.json > trufflehog-results.sarif || echo '{"version":"2.1.0","runs":[]}' > trufflehog-results.sarif
+          ' trufflehog-results.json > trufflehog-results.sarif
 
       # -------------------------
       # 6. Upload Artifact
