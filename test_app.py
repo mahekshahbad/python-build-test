@@ -28,6 +28,17 @@
 
 
 
+
+inputs:
+  trufflehog-ignore-patterns:
+    description: "Custom ignore patterns (newline separated)"
+    required: false
+    type: string
+    default: ""
+
+
+
+
 name: Trigger TruffleHog Scan
 
 on:
