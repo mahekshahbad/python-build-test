@@ -1,0 +1,191 @@
+name: TruffleHog Secret Scan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: false
+        type: string
+        default: "."
+      fail-on-secrets:
+        required: false
+        type: boolean
+        default: true
+      upload-artifact:
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  trufflehog-scan:
+    runs-on: self-hosted
+
+    steps:
+      # -------------------------
+      # 1. Checkout
+      # -------------------------
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # -------------------------
+      # 2. Setup Ignore Rules
+      # -------------------------
+      - name: Prepare TruffleHog Ignore File
+        id: ignore
+        run: |
+          echo "Creating ignore file"
+
+          TRUFFLEHOG_IGNORE="${RUNNER_TEMP}/.trufflehogignore"
+
+          printf "%s\n" \
+          ".git/" \
+          "node_modules/" \
+          ".terraform/" \
+          ".terraform.lock.hcl" \
+          "test-results/" \
+          "security-reports/" \
+          ".*\\.sarif$" \
+          ".*\\.json$" \
+          > "$TRUFFLEHOG_IGNORE"
+
+          echo "TRUFFLEHOG_IGNORE=$TRUFFLEHOG_IGNORE" >> $GITHUB_ENV
+
+      # -------------------------
+      # 3. Run TruffleHog Scan
+      # -------------------------
+      - name: Run TruffleHog Scan
+        id: scan
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Starting TruffleHog scan..."
+
+          trufflehog filesystem . \
+            --json \
+            --no-update \
+            --exclude-paths="$TRUFFLEHOG_IGNORE" \
+            > trufflehog-results.json 2>&1
+
+          echo "Scan completed"
+
+      # -------------------------
+      # 4. Evaluate Results
+      # -------------------------
+      - name: Evaluate Scan Results
+        id: evaluate
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Evaluating scan results..."
+
+          if [ ! -f trufflehog-results.json ]; then
+            echo "❌ Scan output file not found"
+            exit 1
+          fi
+
+          SECRET_COUNT=$(grep -c '"DetectorName"' trufflehog-results.json || echo "0")
+          SECRET_COUNT=$(echo "$SECRET_COUNT" | tr -d '[:space:]')
+
+          echo "Secrets detected: $SECRET_COUNT"
+
+          echo "SECRET_COUNT=$SECRET_COUNT" >> $GITHUB_ENV
+
+          if [ "$SECRET_COUNT" -gt 0 ]; then
+            echo "❌ Secrets found!"
+
+            if [ "${{ inputs.fail-on-secrets }}" = "true" ]; then
+              exit 1
+            fi
+          else
+            echo "✅ No secrets found"
+          fi
+
+      # -------------------------
+      # 5. Convert to SARIF
+      # -------------------------
+      - name: Convert Results to SARIF
+        if: always()
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Converting results to SARIF..."
+
+          if [ ! -s trufflehog-results.json ]; then
+            echo "No results to convert"
+            echo '{"version":"2.1.0","runs":[]}' > trufflehog-results.sarif
+            exit 0
+          fi
+
+          jq -s '
+          {
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "TruffleHog",
+                    "informationUri": "https://github.com/trufflesecurity/trufflehog"
+                  }
+                },
+                "results": (
+                  map(select(.DetectorName != null)) | map({
+                    "ruleId": .DetectorName,
+                    "message": {
+                      "text": ("Potential secret detected: " + .DetectorName)
+                    },
+                    "level": "error",
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": (.SourceMetadata.Data.Filesystem.file // "unknown")
+                          },
+                          "region": {
+                            "startLine": (.SourceMetadata.Data.Filesystem.line // 1)
+                          }
+                        }
+                      }
+                    ]
+                  })
+                )
+              }
+            ]
+          }
+          ' trufflehog-results.json > trufflehog-results.sarif
+
+      # -------------------------
+      # 6. Upload Artifact
+      # -------------------------
+      - name: Upload Results
+        if: ${{ inputs.upload-artifact }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: trufflehog-results
+          path: |
+            ${{ inputs.working-directory }}/trufflehog-results.json
+            ${{ inputs.working-directory }}/trufflehog-results.sarif
+
+      # -------------------------
+      # 7. PR Comment
+      # -------------------------
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const secretCount = process.env.SECRET_COUNT || "0";
+
+            let message = "### 🔐 TruffleHog Scan Result\n\n";
+
+            if (secretCount > 0) {
+              message += `❌ ${secretCount} potential secret(s) detected.\n`;
+              message += "Please review workflow logs.\n";
+            } else {
+              message += "✅ No secrets detected.\n";
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
