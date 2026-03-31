@@ -1,10 +1,30 @@
-from app import add
+- name: Prepare TruffleHog Ignore File
+  id: ignore
+  run: |
+    echo "Creating ignore file"
 
-def test_add():
-    assert add(2, 3) == 5
+    TRUFFLEHOG_IGNORE="${RUNNER_TEMP}/.trufflehogignore"
 
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    # Default patterns (safe baseline)
+    printf "%s\n" \
+      ".git/" \
+      "node_modules/" \
+      ".terraform/" \
+      ".terraform.lock.hcl" \
+      "test-results/" \
+      "security-reports/" \
+      ".*\\.sarif$" \
+      ".*\\.json$" \
+      > "$TRUFFLEHOG_IGNORE"
+
+    # Append user-provided patterns
+    if [ -n "${{ inputs.trufflehog-ignore-patterns }}" ]; then
+      echo "Adding user provided ignore patterns"
+      echo "${{ inputs.trufflehog-ignore-patterns }}" >> "$TRUFFLEHOG_IGNORE"
+    fi
+
+    echo "TRUFFLEHOG_IGNORE=$TRUFFLEHOG_IGNORE" >> $GITHUB_ENV
+
 
 
 
