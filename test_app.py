@@ -1,3 +1,10 @@
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+
+
 jq -r '
   select(.DetectorName != null) |
   "Detector: \(.DetectorName) |
