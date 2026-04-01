@@ -259,3 +259,25 @@ jobs:
               repo: context.repo.repo,
               body: message
             });
+
+
+
+================================
+
+
+
+name: TruffleHog Scan
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  call-trufflehog:
+    uses: medica-dev-platform/test-access/.github/workflows/trufflehog.yml@main
+    with:
+      working-directory: "."
+      fail-on-secrets: true
+      upload-artifact: true
+
+      trufflehog-ignore-patterns: ""
