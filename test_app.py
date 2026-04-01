@@ -1,3 +1,9 @@
+Testing secret detection
+
+AWS_SECRET_ACCESS_KEY=abcd1234secretkey
+password=supersecret123
+
+
 permissions:
   contents: read
   issues: read
