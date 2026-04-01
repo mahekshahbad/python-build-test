@@ -1,3 +1,56 @@
+scan-issues-prs:
+  description: "Scan GitHub issues and PR comments"
+  required: false
+  type: boolean
+  default: true
+
+
+
+# --------------------------
+# 3B. Scan Issues & PR Comments
+# --------------------------
+- name: Scan GitHub Issues & PRs
+  if: ${{ inputs.scan-issues-prs }}
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    echo "Scanning GitHub issues and PR comments..."
+
+    trufflehog github \
+      --repo="${{ github.repository }}" \
+      --json \
+      --no-update \
+      > trufflehog-github-results.json 2>&1 || true
+
+    echo "GitHub scan completed"
+
+
+
+
+# --------------------------
+# Merge Results
+# --------------------------
+- name: Merge Scan Results
+  run: |
+    echo "Merging scan results..."
+
+    if [ -f trufflehog-github-results.json ]; then
+      cat trufflehog-results.json trufflehog-github-results.json > combined-results.json
+      mv combined-results.json trufflehog-results.json
+    fi
+
+
+
+
+
+
+
+
+
+
+======================
+
+
 - name: Prepare TruffleHog Ignore File
   id: ignore
   run: |
