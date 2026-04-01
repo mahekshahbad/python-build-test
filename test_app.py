@@ -1,3 +1,19 @@
+jq -r '
+  select(.DetectorName != null) |
+  "Detector: \(.DetectorName) |
+   Source: \(
+     .SourceMetadata.Data.Filesystem.file
+     // (.SourceMetadata.Data.GitHub.repository + " (Issue/PR)")
+     // "unknown"
+   ) |
+   Line: \(
+     .SourceMetadata.Data.Filesystem.line
+     // "N/A"
+   )"
+' trufflehog-results.json
+
+
+
 scan-issues-prs:
   description: "Scan GitHub issues and PR comments"
   required: false
