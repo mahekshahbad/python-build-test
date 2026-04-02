@@ -1,3 +1,78 @@
+name: TruffleHog Secret Scan (Repo + Issues + PRs)
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  workflow_dispatch:
+    inputs:
+      repo_url:
+        description: "GitHub repo URL to scan (e.g. https://github.com/trufflesecurity/test_keys)"
+        required: false
+        default: "https://github.com/medica-dev-platform/test1"
+      results_filter:
+        description: "Filter results: verified, unknown, unverified, or comma-separated combo"
+        required: false
+        default: "verified,unknown,unverified"
+
+jobs:
+  trufflehog-scan:
+    name: TruffleHog - Scan Repo + Issues + PRs
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---------------------------------------------------------------
+      # 1. Standard git-history scan using the official TruffleHog action
+      # ---------------------------------------------------------------
+      - name: TruffleHog - Git History Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --results=verified,unknown
+
+      # ---------------------------------------------------------------
+      # 2. Full GitHub scan including Issues & PR comments
+      #    Uses the `github` scanner which needs a token with repo access.
+      #    Docs: trufflehog github --repo=<url> --issue-comments --pr-comments
+      # ---------------------------------------------------------------
+      - name: Determine repo to scan
+        id: repo
+        run: |
+          if [ -n "${{ github.event.inputs.repo_url }}" ]; then
+            echo "url=${{ github.event.inputs.repo_url }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=https://github.com/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ github.event.inputs.results_filter }}" ]; then
+            echo "filter=${{ github.event.inputs.results_filter }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "filter=verified,unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: TruffleHog - Scan Issues & PR Comments
+        run: |
+          docker run --rm \
+            trufflesecurity/trufflehog:latest \
+            github \
+              --repo=${{ steps.repo.outputs.url }} \
+              --issue-comments \
+              --pr-comments \
+              --token=${{ secrets.TRUFFLEHOG_TOKEN }} \
+              --results=${{ steps.repo.outputs.filter }} \
+              --json
+        env:
+          TRUFFLEHOG_TOKEN: ${{ secrets.TRUFFLEHOG_TOKEN }}
+
+===============
+
+
+
 Testing secret detection
 
 AWS_SECRET_ACCESS_KEY=abcd1234secretkey
