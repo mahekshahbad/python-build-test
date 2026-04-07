@@ -1,0 +1,115 @@
+FROM python:3.9
+
+WORKDIR /app
+
+COPY . .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "app.py"]
+
+
+
+
+
+name: Python Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    env:
+      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER_SANDBOX }}
+      IMAGE_NAME: sds-codeset-extract
+      NAMESPACE: sds-codeset-extract-dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ACR Login
+      - name: ACR Login
+        run: az acr login --name $ACR_LOGIN_SERVER
+
+      # Prepare Image Tag (same logic as Java)
+      - name: Prepare Docker Metadata
+        id: docker_meta
+        run: |
+          DATE=$(date +%Y%m%d)
+          GIT_SHA=${GITHUB_SHA::8}
+          BUILD_NUMBER=${GITHUB_RUN_NUMBER}
+          BRANCH_NAME=${GITHUB_REF_NAME}
+
+          VERSION="${DATE}.${GIT_SHA}.${BUILD_NUMBER}"
+          IMAGE_TAG="${VERSION}-${BRANCH_NAME}"
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Docker Build & Push (IMPORTANT: use same module)
+      - name: Docker Build and Push
+        uses: medica-dev-platform/github-common-actions/.github/actions/docker-build@feature/maven-build-action
+        with:
+          image-name: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          image-tag: ${{ steps.docker_meta.outputs.IMAGE_TAG }}
+          dockerfile-path: ./Dockerfile
+          build-context: .
+          push: true
+
+      # Set AKS context (same as Java)
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v5
+        with:
+          cluster-name: k8s-20-npe-cicd-02
+          resource-group: rg-20-npe-k8s-01
+
+      # Create Namespace (manager asked explicitly)
+      - name: Create Namespace if not exists
+        run: |
+          kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+
+      # Deploy to AKS
+      - name: Deploy to AKS
+        run: |
+          IMAGE="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.docker_meta.outputs.IMAGE_TAG }}"
+
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: sds-codeset-extract
+            namespace: $NAMESPACE
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: sds-codeset-extract
+            template:
+              metadata:
+                labels:
+                  app: sds-codeset-extract
+              spec:
+                containers:
+                - name: sds-codeset-extract
+                  image: $IMAGE
+                  ports:
+                  - containerPort: 8000
+                  imagePullPolicy: Always
+          EOF
+
+      # Verify Deployment
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment/sds-codeset-extract -n $NAMESPACE
