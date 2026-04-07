@@ -1,3 +1,15 @@
+Python Build Action:
+
+Implemented a reusable Python build composite action for dependency installation and environment setup.
+It standardizes the setup process and ensures consistency across repositories.
+
+Python Test Action:
+
+Implemented a Python test composite action using pytest with JUnit XML and coverage reports.
+It generates reports for CI validation and integration with tools like SonarQube.
+
+
+
 Successfully implemented the TruffleHog secret scanning workflow with verified secret filtering.
 The workflow has been tested and is running successfully in the Medica environment.
 
