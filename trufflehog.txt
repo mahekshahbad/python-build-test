@@ -1,3 +1,21 @@
+0s
+Run actions/checkout@v4
+Syncing repository: medica-dev-platform/sds-codeset-extract
+Getting Git version info
+Temporarily overriding HOME='/apps/github-runner/github-runner2/_work/_temp/e90bce4c-673a-4277-ab96-9a3701d7bde7' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+/usr/bin/git config --global --add safe.directory /apps/github-runner/github-runner2/_work/sds-codeset-extract/sds-codeset-extract
+/usr/bin/git config --local --get remote.origin.url
+https://github.com/medica-dev-platform/sds-codeset-extract
+Removing previously created refs, to avoid conflicts
+/usr/bin/git submodule status
+Cleaning the repository
+Warning: Unable to clean or reset the repository. The repository will be recreated instead.
+Deleting the contents of '/apps/github-runner/github-runner2/_work/sds-codeset-extract/sds-codeset-extract'
+Error: File was unable to be removed Error: EACCES: permission denied, unlink '/apps/github-runner/github-runner2/_work/sds-codeset-extract/sds-codeset-extract/.git/objects/1d/a5bd21fd30de9fb4f00c447b356de1765f008a'
+
+
+
 name: Python-Deploy
 
 on:
