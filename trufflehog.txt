@@ -1,3 +1,8 @@
+Successfully implemented the TruffleHog secret scanning workflow with verified secret filtering.
+The workflow has been tested and is running successfully in the Medica environment.
+
+
+
 name: TruffleHog Secret Scan
 
 on:
