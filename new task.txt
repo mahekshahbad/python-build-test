@@ -1,3 +1,29 @@
+name: Python Image Scan Test
+
+on:
+  push:
+    branches: main
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest   
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t python-test:latest ./dockerfiles/python
+
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: python-test:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+
+
+
 name: Python Base Image Scan
 
 on:
