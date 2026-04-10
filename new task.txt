@@ -1,0 +1,23 @@
+FROM python:3.9-slim-bookworm
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update & install only required packages
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip (important for vulnerabilities)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Create non-root user (security best practice)
+RUN useradd -m appuser
+USER appuser
+
+WORKDIR /app
+
+CMD ["python3"]
