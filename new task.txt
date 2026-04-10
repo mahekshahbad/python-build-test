@@ -1,3 +1,62 @@
+name: Python Base Image Scan
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  scan-python-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Build your image
+      - name: Build Docker Image
+        run: |
+          docker build -t python-base:latest ./base-images/dockerfiles/python
+
+      # Install Trivy
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget jq
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+
+      # Scan and generate SARIF
+      - name: Scan Image (Trivy → SARIF)
+        run: |
+          trivy image \
+            --format sarif \
+            --output trivy-results.sarif \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            python-base:latest
+
+      # Upload to GitHub Security tab
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      # Fail pipeline if CRITICAL > 0
+      - name: Fail if CRITICAL vulnerabilities found
+        run: |
+          CRITICAL=$(jq '[.runs[].results[] | select(.level=="error")] | length' trivy-results.sarif)
+
+          echo "Critical vulnerabilities: $CRITICAL"
+
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ Found CRITICAL vulnerabilities"
+            exit 1
+          else
+            echo "✅ No CRITICAL vulnerabilities"
+          fi
+
+
+
 FROM python:3.9-slim-bookworm
 
 # Avoid interactive prompts
