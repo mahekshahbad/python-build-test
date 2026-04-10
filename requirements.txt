@@ -1,2 +1,3 @@
-I’ve completed the Python base image setup along with the Trivy scan workflow.
-The workflow builds the image, scans for vulnerabilities, uploads results to the Security tab, and posts a PR report.
+- name: Test Python image
+  run: |
+    docker run --rm python-test:latest python --version
