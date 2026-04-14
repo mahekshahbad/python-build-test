@@ -1,3 +1,8 @@
+pip3 install --upgrade pip setuptools wheel importlib-metadata
+
+
+
+
 name: Python-Deploy
 
 on:
