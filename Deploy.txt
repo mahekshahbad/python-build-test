@@ -1,5 +1,24 @@
-pip3 install --upgrade pip setuptools wheel importlib-metadata
+FROM python:3.9-slim-bookworm
 
+WORKDIR /app
+
+# ✅ Install required system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libffi-dev \
+    python3-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+# ✅ Upgrade pip + fix metadata issue
+RUN pip install --upgrade pip setuptools wheel importlib-metadata
+
+# ✅ Install requirements
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "app.py"]
 
 
 
