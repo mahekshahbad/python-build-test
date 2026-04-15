@@ -1,3 +1,31 @@
+ deploy:
+  #   permissions:
+  #     id-token: write
+  #   runs-on: self-hosted
+  #   needs: [publish]
+  #   env:
+  #     ACR_LOGIN_SERVER_SANDBOX: ${{ secrets.ACR_LOGIN_SERVER_SANDBOX }}
+  #   steps:
+  #     - id: image_name
+  #       run: |
+  #         echo ${{ needs.publish.outputs.IMAGE_NAME }}
+  #         echo "BUILT_IMAGE_NAME=$(echo ${{ needs.publish.outputs.IMAGE_NAME }} | base64 -d )" >> $GITHUB_OUTPUT
+  #     - uses: medica-dev-platform/github-common-actions/helm@helm-deploy
+  #       with:
+  #         image_name: ${{ steps.image_name.outputs.BUILT_IMAGE_NAME }}
+  #         namespace: "laserfinche-ns" 
+  #         helm_registry:  ${{ secrets.ACR_LOGIN_SERVER_SANDBOX }}
+  #         chart_path: '.'
+  #         chart_name: app-stack
+  #         chart_version: '0.1.0'
+  #         chart_overwrite_path: helm/helm-values/values.yaml
+  #         cluster_name: 'k8s-20-npe-cicd-02'
+  #         resource_group: 'rg-20-npe-k8s-01'
+          # azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          # azure_client_id:  ${{ secrets.AZURE_CLIENT_ID }}
+
+
 Completed the Python deploy workflow for AKS, including Docker build & push, AKS setup, and deployment using Kubernetes. The workflow has been successfully validated and is working as expected.
 
 
