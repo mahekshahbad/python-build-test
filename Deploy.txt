@@ -1,4 +1,22 @@
- deploy:
+serviceAccount:
+  create: false
+
+service:
+  enabled: true   # since you exposed port 8000
+
+applications:
+  - name: sds-codeset-extract
+    replicaCount: 1
+
+    image:
+      repository: ""   # will be injected by workflow
+      tag: ""          # will be injected by workflow
+
+    containerPort: 8000
+
+
+
+deploy:
   #   permissions:
   #     id-token: write
   #   runs-on: self-hosted
