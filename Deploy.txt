@@ -1,3 +1,6 @@
+Completed the Python deploy workflow for AKS, including Docker build & push, AKS setup, and deployment using Kubernetes. The workflow has been successfully validated and is working as expected.
+
+
 name: Python Deploy
 
 on:
