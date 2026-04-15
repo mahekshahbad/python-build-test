@@ -1,3 +1,7 @@
+- name: Debug Secrets
+  run: |
+    echo "Client ID exists: ${{ secrets.AZURE_CLIENT_ID != '' }}"
+
 - name: Decode Image Name
   id: image_name
   run: |
