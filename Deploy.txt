@@ -1,3 +1,22 @@
+- name: Decode Image Name
+  id: image_name
+  run: |
+    echo "BUILT_IMAGE_NAME=${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.docker_meta.outputs.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+- name: Deploy using Helm
+  uses: medica-dev-platform/github-common-actions/helm@helm-deploy
+  with:
+    image_name: ${{ steps.image_name.outputs.BUILT_IMAGE_NAME }}
+    namespace: ${{ env.NAMESPACE }}
+    helm_registry: ${{ secrets.ACR_LOGIN_SERVER_SANDBOX }}
+    chart_path: '.'
+    chart_name: app-stack
+    chart_version: '0.1.0'
+    chart_overwrite_path: helm/helm-values/values.yaml
+    cluster_name: 'k8s-20-npe-cicd-02'
+    resource_group: 'rg-20-npe-k8s-01'
+
+
 serviceAccount:
   create: false
 
