@@ -1,3 +1,134 @@
+name: Python Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    container:
+      image: ubuntu:latest
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+
+    env:
+      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER_SANDBOX }}
+      IMAGE_NAME: sds-codeset-extract
+      NAMESPACE: sds-codeset-extract-dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Install Deps
+        id: install_deps
+        run: |
+          apt-get update
+          apt-get install -y curl apt-transport-https ca-certificates lsb-release gnupg docker.io python3-pip
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv ./kubectl /usr/local/bin/kubectl
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ACR Login
+      - name: ACR Login
+        run: az acr login --name $ACR_LOGIN_SERVER
+
+      # Prepare Image Tag 
+      - name: Prepare Docker Metadata
+        id: docker_meta
+        shell: bash
+        run: |
+          DATE=$(date +%Y%m%d)
+          GIT_SHA=${GITHUB_SHA::8}
+          BUILD_NUMBER=${GITHUB_RUN_NUMBER}
+          BRANCH_NAME=${GITHUB_REF_NAME}
+
+          VERSION="${DATE}.${GIT_SHA}.${BUILD_NUMBER}"
+          IMAGE_TAG="${VERSION}-${BRANCH_NAME}"
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Docker Build & Push 
+      - name: Docker Build and Push
+        uses: medica-dev-platform/github-common-actions/.github/actions/docker-build@feature/maven-build-action
+        with:
+          image-name: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          image-tag: ${{ steps.docker_meta.outputs.IMAGE_TAG }}
+          dockerfile-path: ./Dockerfile
+          build-context: .
+          push: true
+
+      # Set AKS context
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v5
+        with:
+          cluster-name: k8s-20-npe-cicd-02
+          resource-group: rg-20-npe-k8s-01
+
+      # Create Namespace
+      - name: Create Namespace if not exists
+        run: |
+          kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+
+      # Deploy to AKS
+      - name: Deploy to AKS
+        run: |
+          IMAGE="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.docker_meta.outputs.IMAGE_TAG }}"
+
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: sds-codeset-extract
+            namespace: $NAMESPACE
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: sds-codeset-extract
+            template:
+              metadata:
+                labels:
+                  app: sds-codeset-extract
+              spec:
+                containers:
+                - name: sds-codeset-extract
+                  image: $IMAGE
+                  ports:
+                  - containerPort: 8000
+                  imagePullPolicy: Always
+          EOF
+
+      # Verify Deployment
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment/sds-codeset-extract -n $NAMESPACE
+          kubectl get deployment -n $NAMESPACE
+
+
+
+
+
+
+
 FROM python:3.9-slim-bookworm
 
 WORKDIR /app
